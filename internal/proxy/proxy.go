@@ -51,8 +51,8 @@ func osIsTimeout(err error) bool {
 	return errors.As(err, &netErr) && netErr.Timeout()
 }
 
-// NewUpstreamProxy creates a connection-pooled, low-latency streaming reverse proxy.
-func NewUpstreamProxy(name string, target *url.URL, cfg *config.Config, bufPool *BufferPool) *UpstreamProxy {
+// NewUpstreamProxy creates a connection-pooled, low-latency streaming reverse proxy with optional APM instrumentation.
+func NewUpstreamProxy(name string, target *url.URL, cfg *config.Config, bufPool *BufferPool, nrApp ...*newrelic.Application) *UpstreamProxy {
 	transport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -69,8 +69,14 @@ func NewUpstreamProxy(name string, target *url.URL, cfg *config.Config, bufPool 
 		DisableKeepAlives:     false,
 	}
 
+	// Instrument round-tripper with New Relic external segments when APM is active
+	var rt http.RoundTripper = transport
+	if len(nrApp) > 0 && nrApp[0] != nil {
+		rt = newrelic.NewRoundTripper(transport)
+	}
+
 	revProxy := &httputil.ReverseProxy{
-		Transport:     transport,
+		Transport:     rt,
 		BufferPool:    bufPool,
 		FlushInterval: 10 * time.Millisecond, // Flushes SSE chunks immediately
 		ModifyResponse: func(resp *http.Response) error {

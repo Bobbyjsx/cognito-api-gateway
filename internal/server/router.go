@@ -33,8 +33,8 @@ func New(cfg *config.Config, nrApp ...*newrelic.Application) *Server {
 
 	bufPool := proxy.NewBufferPool()
 
-	backendProxy := proxy.NewUpstreamProxy("cognito-backend", cfg.BackendServiceURL, cfg, bufPool)
-	identityProxy := proxy.NewUpstreamProxy("identity-service", cfg.IdentityServiceURL, cfg, bufPool)
+	backendProxy := proxy.NewUpstreamProxy("cognito-backend", cfg.BackendServiceURL, cfg, bufPool, app)
+	identityProxy := proxy.NewUpstreamProxy("identity-service", cfg.IdentityServiceURL, cfg, bufPool, app)
 
 	rateLimiter := middleware.NewRateLimiter(cfg.RateLimitRPS, cfg.RateLimitBurst, cfg.RateLimitEnabled)
 	probeManager := probe.NewProbeManager(cfg, cfg.BackendServiceURL, cfg.IdentityServiceURL)
