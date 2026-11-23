@@ -75,14 +75,16 @@ func TestGetClientIP(t *testing.T) {
 }
 
 func TestCORS(t *testing.T) {
-	corsMiddleware := CORS([]string{"https://cognito.bobslab.xyz", "http://localhost:3000"})
+	corsMiddleware := CORS([]string{"https://cognito.bobslab.xyz", "http://localhost:3000", "*.bobslab.xyz"})
 	handler := corsMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	// Preflight OPTIONS test
+	// Preflight OPTIONS test with custom headers
 	reqOptions := httptest.NewRequest(http.MethodOptions, "/test", nil)
 	reqOptions.Header.Set("Origin", "https://cognito.bobslab.xyz")
+	reqOptions.Header.Set("Access-Control-Request-Method", "GET")
+	reqOptions.Header.Set("Access-Control-Request-Headers", "authorization,x-refresh-token")
 	recOptions := httptest.NewRecorder()
 	handler.ServeHTTP(recOptions, reqOptions)
 
@@ -91,6 +93,23 @@ func TestCORS(t *testing.T) {
 	}
 	if recOptions.Header().Get("Access-Control-Allow-Origin") != "https://cognito.bobslab.xyz" {
 		t.Errorf("expected reflected origin, got %s", recOptions.Header().Get("Access-Control-Allow-Origin"))
+	}
+	if recOptions.Header().Get("Vary") != "Origin" {
+		t.Errorf("expected Vary: Origin, got %s", recOptions.Header().Get("Vary"))
+	}
+	allowHeaders := recOptions.Header().Get("Access-Control-Allow-Headers")
+	if !strings.Contains(allowHeaders, "X-Refresh-Token") || !strings.Contains(allowHeaders, "x-refresh-token") {
+		t.Errorf("expected X-Refresh-Token in allow-headers, got %s", allowHeaders)
+	}
+
+	// Subdomain wildcard matching
+	reqWildcard := httptest.NewRequest(http.MethodGet, "/test", nil)
+	reqWildcard.Header.Set("Origin", "https://preview.bobslab.xyz")
+	recWildcard := httptest.NewRecorder()
+	handler.ServeHTTP(recWildcard, reqWildcard)
+
+	if recWildcard.Header().Get("Access-Control-Allow-Origin") != "https://preview.bobslab.xyz" {
+		t.Errorf("expected subdomain wildcard to match, got %s", recWildcard.Header().Get("Access-Control-Allow-Origin"))
 	}
 
 	// Normal GET test with disallowed origin
