@@ -209,6 +209,7 @@ func NewUpstreamProxy(name string, target *url.URL, cfg *config.Config, bufPool 
 
 // ServeHTTP forwards the request to the upstream target.
 func (u *UpstreamProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	middleware.SetUpstreamTarget(r.Context(), u.name)
 	u.proxy.ServeHTTP(w, r)
 }
 

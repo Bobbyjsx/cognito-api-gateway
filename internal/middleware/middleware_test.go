@@ -147,3 +147,19 @@ func TestRateLimiter(t *testing.T) {
 		t.Errorf("expected 429 Too Many Requests, got %d", recExceeded.Code)
 	}
 }
+
+func TestLogger(t *testing.T) {
+	handler := Logger(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		SetUpstreamTarget(r.Context(), "cognito-backend")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/test/path", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200 OK, got %d", rec.Code)
+	}
+}
