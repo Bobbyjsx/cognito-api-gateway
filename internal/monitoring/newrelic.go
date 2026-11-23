@@ -30,11 +30,15 @@ func (w *LogWriter) Write(p []byte) (n int, err error) {
 	}
 
 	if w.App != nil {
-		w.App.RecordLog(newrelic.LogData{
-			Timestamp: time.Now().UnixMilli(),
-			Message:   strings.TrimSpace(string(p)),
-			Severity:  "INFO",
-		})
+		line := strings.TrimSpace(string(p))
+		// Skip duplicate forwarding of request access logs already recorded by txn.RecordLog
+		if line != "" && !strings.Contains(line, `"request_id":`) {
+			w.App.RecordLog(newrelic.LogData{
+				Timestamp: time.Now().UnixMilli(),
+				Message:   line,
+				Severity:  "INFO",
+			})
+		}
 	}
 
 	return n, err
